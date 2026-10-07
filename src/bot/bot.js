@@ -16,7 +16,7 @@ export const initTelegramBot = () => {
 
   botInstance = new Bot(config.telegramBotToken);
 
-  // 1. /start ትዕዛዝ
+  // 1. /start 
   botInstance.command('start', async (ctx) => {
     await handleStartCommand(ctx);
   });
