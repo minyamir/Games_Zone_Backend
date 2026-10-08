@@ -1,4 +1,3 @@
-// 📱 ስልክ ቁጥር ለማጋራት የሚያስችል ኪቦርድ (በ 4 ቋንቋዎች)
 export const phoneRequestKeyboard = (lang = 'am') => {
   const texts = {
     am: '📱 ለመመዝገብ ስልክ ቁጥር ያጋሩ',
@@ -17,7 +16,7 @@ export const phoneRequestKeyboard = (lang = 'am') => {
   };
 };
 
-// 🌐 ዋናው የሜኑ ቁልፍ ሰሌዳ በ 4 ቋንቋዎች የሚያመነጭ ተግባር (Function)
+
 export const getMainMenuKeyboard = (lang = 'am') => {
   const menus = {
     am: [
@@ -63,10 +62,10 @@ export const getMainMenuKeyboard = (lang = 'am') => {
   };
 };
 
-// ነባር ኮዶች እንዳይበላሹ ነባሪው (Amharic) ኪቦርድ እንደ ተለዋዋጭ (Variable) ተቀምጧል
+
 export const mainMenuKeyboard = getMainMenuKeyboard('am');
 
-// '🎮 ጌም ጨወቱ (PLAY)' ሲጫን ሚኒ አፑን እንዲከፍት የሚደረግ የኢንላይን ቁልፍ
+
 export const playWebAppKeyboard = (miniAppUrl, lang = 'am') => {
   const texts = {
     am: '🎮 አሁኑኑ ይጫወቱ (Play Bingo)',
@@ -88,7 +87,7 @@ export const playWebAppKeyboard = (miniAppUrl, lang = 'am') => {
   };
 };
 
-// የታችኛው ሜኑ ሲዘጋ የሚታየው የ 'ወደ ኋላ ተመለስ' ኪቦርድ በ 4 ቋንቋዎች
+
 export const getBackKeyboard = (lang = 'am') => {
   const texts = {
     am: '🔙 ወደ ኋላ ተመለስ',
