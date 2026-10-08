@@ -40,12 +40,14 @@ Carraa gaarii! 🎮`,
 Nasiib wacan! 🎮`
 };
 
-export const handleRulesCommand = async (ctx, telegramId) => {
+export const handleRulesCommand = async (ctx, paramTelegramId) => {
   try {
+    // ⚡ Safely resolve telegramId from parameter or fallback directly to ctx.from.id
+    const telegramId = paramTelegramId ? String(paramTelegramId) : String(ctx.from?.id);
     let lang = 'am';
 
     // ⚡ High-speed non-blocking lean query for language preference
-    if (telegramId) {
+    if (telegramId && telegramId !== 'undefined') {
       const user = await User.findOne({ telegramId }).select('language').lean();
       if (user?.language) {
         lang = user.language;
