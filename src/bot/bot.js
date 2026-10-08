@@ -4,11 +4,13 @@ import { config } from '../config/env.js';
 import { handleStartCommand, handleContactShare } from './handlers/start.handler.js';
 import { handleDepositCallback } from './handlers/deposit.handler.js';
 import { handleWithdrawalCallback } from './handlers/withdrawal.handler.js';
+import { handleLanguageCallback } from './handlers/language.handler.js';
 import { handleMenuMessage } from './handlers/menu.handler.js';
-import { mainMenuKeyboard } from './keyboards.js'; // 💡 የዋናውን ሜኑ ኪቦርድ ማስገባት
+import { getMainMenuKeyboard } from './keyboards.js';
+import { userService } from '../services/user.service.js';
 
 let botInstance = null;
-const userStates = new Map(); // ለከፍተኛ ፍጥነት በ Memory የሚይዘው ስቴት (ለ Production Redis መጠቀም ይመረጣል)
+const userStates = new Map(); // ለከፍተኛ ፍጥነት በ Memory የሚይዘው ስቴት
 
 export const initTelegramBot = () => {
   if (botInstance) return botInstance;
@@ -33,14 +35,28 @@ export const initTelegramBot = () => {
         await handleDepositCallback(botInstance, query, userStates);
       } else if (data?.startsWith('withdraw_')) {
         await handleWithdrawalCallback(botInstance, query, userStates);
+      } else if (data?.startsWith('lang_')) {
+        await handleLanguageCallback(botInstance, query);
       } else if (data === 'back_to_menu') {
-        // 💡 ተጠቃሚው 'ወደ ኋላ ተመለስ'ን ሲጫን ስቴቱን አጽድተን ዋናውን ሜኑ እንመልሳለን
         userStates.delete(telegramId);
+
+        // ከካሽ ወይም ከዳታቤዝ ቋንቋውን ፈጣን በሆነ መንገድ ማግኘት
+        const userState = userStates.get(telegramId);
+        const user = userState || await userService.getUserByTelegramId(telegramId);
+        const lang = user?.language || 'am';
+        const mainMenuMarkup = getMainMenuKeyboard(lang);
+
+        const menuTexts = {
+          am: '🔙 ወደ ዋናው ሜኑ ተመልሰዋል።',
+          en: '🔙 Returned to the main menu.',
+          om: '🔙 Gara menuu guddaatti deebi\'ataniittu.',
+          so: '🔙 Waxaad ku noqotay menu-ga główni.'
+        };
 
         await botInstance.api.sendMessage({
           chat_id: chatId,
-          text: '🔙 ወደ ዋናው ሜኑ ተመልሰዋል።',
-          reply_markup: mainMenuKeyboard.reply_markup
+          text: menuTexts[lang] || menuTexts['am'],
+          reply_markup: mainMenuMarkup.reply_markup
         });
 
         if (query.id) {
@@ -64,22 +80,47 @@ export const initTelegramBot = () => {
       if (!text) return;
 
       const telegramId = String(ctx.from?.id);
+      const cleanText = text.trim();
 
-      // 💡 ማስተካከያ፡ ተጠቃሚው ዋናው ሜኑ ቁልፎችን ሲጫን የቆየውን ስቴት እናጸዳለን (State Reset)
+      // ⚡ የኋላ መመለሻ ቁልፍን (Back Button) በ 4 ቋንቋዎች በቀጥታ በглобаል ደረጃ መጥለፍ
+      const backTriggers = ['🔙 ወደ ኋላ ተመለስ', '🔙 Back', '🔙 Duubatti Deebi\'i', '🔙 Dib u noqo'];
+      if (backTriggers.some(trigger => cleanText.includes(trigger))) {
+        userStates.delete(telegramId);
+
+        // ቋንቋውን ከሜሞሪ ካሽ ወይም ከዳታቤዝ በአጭር ጊዜ ማምጣት
+        const userState = userStates.get(telegramId);
+        const user = userState || await userService.getUserByTelegramId(telegramId);
+        const lang = user?.language || 'am';
+        const mainMenuMarkup = getMainMenuKeyboard(lang);
+
+        const menuTexts = {
+          am: '🔙 ወደ ዋናው ሜኑ ተመለሰዋል:',
+          en: '🔙 Returned to the main menu:',
+          om: '🔙 Gara menuu guddaatti deebi\'ataniittu:',
+          so: '🔙 Waxaad ku noqotay menu-ga:'
+        };
+
+        await ctx.reply(menuTexts[lang] || menuTexts['am'], mainMenuMarkup);
+        return;
+      }
+
       const menuTriggers = [
         '🎮 ጌም', '👤 ፕሮፋይል', '💰 ሒሳብ', '📥 ገቢ', '📤 ወጪ', 
         '🔗 ጋብዝ', '📢 ድርጅቱን', '🎁 ፕሮሞ', '🌐 ቋንቋ', '📖 መመሪያ', '🆘 እርዳታ', '📜 ደንቦች',
+        'Play', 'Taphocha', 'Ciyaar', 'Profile', 'Proofaayilii', 'Account', 'Herrega', 'Xisaabta',
+        'Deposit', 'Galii', 'Dhigasho', 'Withdraw', 'Baasii', 'Kala', 'Invite', 'Affeerii', 'Casuuno',
+        'Promote', 'Beeksisaa', 'Xayeysii', 'Promo', 'Koodii', 'Language', 'Afaan', 'Luuqada',
+        'Guide', 'Qajeelfama', 'Hagaha', 'Help', 'Gargaarsa', 'Caawin', 'Rules', 'Seerota', 'Xeerarka',
         '/play', '/profile', '/account', '/deposit', '/withdraw', '/referral', '/promote', '/promocode', '/language', '/guide', '/help', '/rules'
       ];
 
-      const isMenuClick = menuTriggers.some(trigger => text.startsWith(trigger));
+      const isMenuClick = menuTriggers.some(trigger => cleanText.includes(trigger));
       if (isMenuClick) {
-        userStates.delete(telegramId); // የቆየ ስቴት ካለ ይሰረዛል!
+        userStates.delete(telegramId);
       }
 
       const userState = userStates.get(telegramId);
 
-      // ስቴት ካለ ለሚመለከተው ሃንድለር መስጠት
       if (userState) {
         if (userState.type === 'deposit') {
           const { handleDepositMessage } = await import('./handlers/deposit.handler.js');
@@ -90,8 +131,11 @@ export const initTelegramBot = () => {
         }
       }
 
-      // መደበኛ የሜኑ መልዕክቶች
-      await handleMenuMessage(ctx, text, telegramId);
+      // ⚡ ለምናሌ ሃንድለር የተጠቃሚውን ቋንቋ ልኮ በፍጥነት ማስተናገድ
+      const cachedUser = userState || await userService.getUserByTelegramId(telegramId);
+      const userLang = cachedUser?.language || 'am';
+
+      await handleMenuMessage(ctx, text, telegramId, userLang);
     } catch (err) {
       console.error('❌ Message Error:', err);
     }

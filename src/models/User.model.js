@@ -54,6 +54,12 @@ const userSchema = new mongoose.Schema(
       enum: ['active', 'suspended', 'banned'],
       default: 'active',
     },
+    // ቋንቋዎችን ለማስቀመጥ ይህንን እዚህ እንጨምራለን (Default: amharic 'am')
+    language: {
+      type: String,
+      enum: ['am', 'en', 'om', 'so'],
+      default: 'am',
+    },
     lastLoginAt: {
       type: Date,
       default: Date.now,
