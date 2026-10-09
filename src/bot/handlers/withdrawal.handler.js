@@ -124,7 +124,16 @@ export const handleWithdrawalMessage = async (ctx, telegramId, state, userStates
       userStates.delete(telegramId);
       const mainMenuMarkup = getMainMenuKeyboard(lang);
 
-      if (err.message === 'INSUFFICIENT_BALANCE') {
+      // 💡 Handle strict dual-wallet insufficient main balance error
+      if (err.message === 'INSUFFICIENT_MAIN_BALANCE') {
+        const mainBalTexts = {
+          am: '⚠️ **ገንዘብ ማውጣት የሚቻለው ከዋናው ቦርሳ (Main Wallet) ብቻ ነው!**\n\nየምዝገባ ቦነስዎ የሚገኘው በጨዋታ ቦርሳ (Play Wallet) ውስጥ ስለሆነ ማውጣት አይችሉም። ገንዘብ ለማውጣት መጀመሪያ ጨዋታዎችን አሸንፈው ወደ ዋና ቦርሳዎ ማስገባት አለብዎት።',
+          en: '⚠️ **Withdrawals are only allowed from the Main Wallet!**\n\nYour bonus funds are in the Play Wallet and cannot be withdrawn directly. Win games to transfer funds to your Main Wallet.',
+          om: '⚠️ **Maallaqa baasuun kan danda\'amu Herrega Guddaa (Main Wallet) irraa qofaadha!**',
+          so: '⚠️ **Lacagaha kala bixitaanka waxaa laga ogolyahay oo kaliya Boorsada Weyn (Main Wallet)!**'
+        };
+        await ctx.reply(mainBalTexts[lang] || mainBalTexts['am'], { parse_mode: 'Markdown', ...mainMenuMarkup });
+      } else if (err.message === 'INSUFFICIENT_BALANCE') {
         const balTexts = {
           am: '⚠️ በኪስ ቦርሳዎ ውስጥ በቂ ገንዘብ የለም።',
           en: '⚠️ Insufficient balance in your wallet.',

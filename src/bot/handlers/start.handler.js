@@ -2,6 +2,7 @@ import path from 'path';
 import { fromPath } from 'node-telegram-bot-api/node';
 import { User } from '../../models/User.model.js';
 import { Wallet } from '../../models/Wallet.model.js';
+import { Transaction } from '../../models/Transaction.model.js';
 import { phoneRequestKeyboard, getMainMenuKeyboard } from '../keyboards.js';
 import crypto from 'crypto';
 
@@ -55,15 +56,15 @@ export const handleStartCommand = async (ctx) => {
         }
       }
     } else {
-      // ⚡ Fetch wallet for registered users
+      // ⚡ Fetch wallet with updated dual-wallet fields (mainWallet & playWallet)
       const wallet = await Wallet.findOne({ user: user._id }).lean();
       const mainMenuMarkup = getMainMenuKeyboard(lang);
 
       const registeredTexts = {
-        am: `🟢 ቢንጎ ⚪ ሀበሻ\n\n🎉 እንኳን ደህና መጡ ${user.firstName}!\n\n💰 ዋና ሒሳብ: ${wallet?.balance || 0}.00 ETB\n💰 ቦነስ ሒሳብ: ${wallet?.bonusBalance || 0}.00 ETB\n\n👇 ጨዋታውን ለመጀመር '🎮 ጌም ጨወቱ (PLAY)' የሚለውን ይጫኑ።`,
-        en: `🟢 Bingo ⚪ Habesha\n\n🎉 Welcome back ${user.firstName}!\n\n💰 Main Balance: ${wallet?.balance || 0}.00 ETB\n💰 Bonus Balance: ${wallet?.bonusBalance || 0}.00 ETB\n\n👇 To start playing, tap '🎮 Play Game'.`,
-        om: `🟢 BiiNGO ⚪ Habesha\n\n🎉 Baga deebitan ${user.firstName}!\n\n💰 Herrega Guddaa: ${wallet?.balance || 0}.00 ETB\n💰 Herrega Boonasii: ${wallet?.bonusBalance || 0}.00 ETB\n\n👇 Taphicha jalqabuuf '🎮 Taphocha Taphadhuu (PLAY)' tuqaa.`,
-        so: `🟢 Bingo ⚪ Habesha\n\n🎉 Kusoo dhowow ${user.firstName}!\n\n💰 Hadhaaga Weyn: ${wallet?.balance || 0}.00 ETB\n💰 Hadhaaga Boonooska: ${wallet?.bonusBalance || 0}.00 ETB\n\n👇 Si aad u bilowdo ciyaarta riix '🎮 Ciyaar (PLAY)'.`
+        am: `🟢 ቢንጎ ⚪ ሀበሻ\n\n🎉 እንኳን ደህና መጡ ${user.firstName}!\n\n🟢 ዋና ቦርሳ (Main): ${wallet?.mainWallet || 0}.00 ETB\n🟡 የጨዋታ ቦርሳ (Play): ${wallet?.playWallet || 0}.00 ETB\n\n👇 ጨዋታውን ለመጀመር '🎮 ጌም ጨወቱ (PLAY)' የሚለውን ይጫኑ።`,
+        en: `🟢 Bingo ⚪ Habesha\n\n🎉 Welcome back ${user.firstName}!\n\n🟢 Main Wallet: ${wallet?.mainWallet || 0}.00 ETB\n🟡 Play Wallet: ${wallet?.playWallet || 0}.00 ETB\n\n👇 To start playing, tap '🎮 Play Game'.`,
+        om: `🟢 BiiNGO ⚪ Habesha\n\n🎉 Baga deebitan ${user.firstName}!\n\n🟢 Herrega Guddaa: ${wallet?.mainWallet || 0}.00 ETB\n🟡 Herrega Taphaa: ${wallet?.playWallet || 0}.00 ETB\n\n👇 Taphicha jalqabuuf '🎮 Taphocha Taphadhuu (PLAY)' tuqaa.`,
+        so: `🟢 Bingo ⚪ Habesha\n\n🎉 Kusoo dhowow ${user.firstName}!\n\n🟢 Boorso Weyn: ${wallet?.mainWallet || 0}.00 ETB\n🟡 Boorso Ciyaar: ${wallet?.playWallet || 0}.00 ETB\n\n👇 Si aad u bilowdo ciyaarta riix '🎮 Ciyaar (PLAY)'.`
       };
 
       const registeredText = registeredTexts[lang] || registeredTexts['am'];
@@ -75,7 +76,7 @@ export const handleStartCommand = async (ctx) => {
 };
 
 /**
- * Handle shared contact for instant registration with multi-language support
+ * Handle shared contact for instant registration with 100 ETB Registration Bonus to Play Wallet
  */
 export const handleContactShare = async (ctx) => {
   try {
@@ -93,6 +94,7 @@ export const handleContactShare = async (ctx) => {
     if (!user) {
       const referralCode = crypto.randomBytes(4).toString('hex').toUpperCase();
       
+      // 1. Create User
       user = await User.create({ 
         telegramId, 
         phoneNumber, 
@@ -102,12 +104,24 @@ export const handleContactShare = async (ctx) => {
         language: lang
       });
 
-      await Wallet.create({ 
+      // 2. ⚡ Create Wallet and credit 100 ETB Registration Bonus to Play Wallet
+      const registrationBonus = 100;
+      const wallet = await Wallet.create({ 
         user: user._id, 
-        balance: 0, 
+        mainWallet: 0,           // ማውጣት የሚቻለው ጨዋታ አሸንፎ ሲገኝ ብቻ ነው
+        playWallet: registrationBonus, // 🎁 የምዝገባ ቦነስ ወደ Play Wallet ይገባል
         lockedBalance: 0, 
-        bonusBalance: 0, 
         currency: 'ETB' 
+      });
+
+      // 3. Register bonus transaction record
+      await Transaction.create({
+        user: user._id,
+        wallet: wallet._id,
+        type: 'bonus',
+        amount: registrationBonus,
+        status: 'completed',
+        description: 'Welcome registration bonus credited to Play Wallet'
       });
     } else {
       user.phoneNumber = phoneNumber;
@@ -116,13 +130,16 @@ export const handleContactShare = async (ctx) => {
 
     const mainMenuMarkup = getMainMenuKeyboard(lang);
     const successTexts = {
-      am: `🎉 ምዝገባዎ በተሳካ ሁኔታ ተጠናቋል!`,
-      en: `🎉 Registration completed successfully!`,
-      om: `🎉 Galmeen keessan milkaa'inaan xumurameera!`,
-      so: `🎉 Diiwaangelintaadu si guul ah ayay ku dhammaatay!`
+      am: `🎉 ምዝገባዎ በተሳካ ሁኔታ ተጠናቋል!\n🎁 የ 100 ETB የምዝገባ ቦነስ ወደ Play Walletዎ ገብቷል!`,
+      en: `🎉 Registration completed successfully!\n🎁 100 ETB registration bonus has been credited to your Play Wallet!`,
+      om: `🎉 Galmeen keessan milkaa'inaan xumurameera!\n🎁 Boonasni galmee 100 ETB Play Wallet keessanitti galteera!`,
+      so: `🎉 Diiwaangelintaadu si guul ah ayay ku dhammaatay!\n🎁 100 ETB oo ah bonus diiwaangelin ah ayaa lagu daray Play Wallet-kaaga!`
     };
 
-    await ctx.reply(successTexts[lang] || successTexts['am'], mainMenuMarkup);
+    await ctx.reply(successTexts[lang] || successTexts['am'], {
+      parse_mode: 'Markdown',
+      ...mainMenuMarkup
+    });
   } catch (err) {
     console.error('❌ Error in start.handler (contact share):', err);
   }

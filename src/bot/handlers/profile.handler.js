@@ -8,7 +8,7 @@ const escapeMarkdown = (text) => {
   return String(text).replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
 };
 
-// ⚡ O(1) Static Profile Translations for zero-latency execution
+// ⚡ O(1) Static Profile Translations for zero-latency execution (Updated for Dual-Wallet)
 const PROFILE_TEXTS = {
   am: {
     title: '👤 *የተጠቃሚ ፕሮፋይል (Profile)*',
@@ -18,8 +18,8 @@ const PROFILE_TEXTS = {
     noPhone: 'አልተመዘገበም',
     referral: '🔗 *የእርስዎ ሪፈራል ኮድ:*',
     regDate: '📅 *የተመዘገቡበት ቀን:*',
-    mainBalance: '💰 *ዋና ሒሳብ:*',
-    bonusBalance: '🎁 *ቦነስ ሒሳብ:*',
+    mainWallet: '🟢 *ዋና ቦርሳ (Main - Withdrawable):*',
+    playWallet: '🟡 *የጨዋታ ቦርሳ (Play - Non-withdrawable):*',
     errorNotFound: '⚠️ እባክዎ መጀመሪያ /start በመጫን ይመዝገቡ።',
     errorGeneral: '⚠️ ፕሮፋይልዎን ማምጣት አልተቻለም። እባክዎ እንደገና ይሞክሩ።'
   },
@@ -31,8 +31,8 @@ const PROFILE_TEXTS = {
     noPhone: 'Not registered',
     referral: '🔗 *Your Referral Code:*',
     regDate: '📅 *Registration Date:*',
-    mainBalance: '💰 *Main Balance:*',
-    bonusBalance: '🎁 *Bonus Balance:*',
+    mainWallet: '🟢 *Main Wallet (Withdrawable):*',
+    playWallet: '🟡 *Play Wallet (Non-withdrawable):*',
     errorNotFound: '⚠️ Please register by pressing /start first.',
     errorGeneral: '⚠️ Could not retrieve your profile. Please try again.'
   },
@@ -44,8 +44,8 @@ const PROFILE_TEXTS = {
     noPhone: 'Hin galmoofne',
     referral: '🔗 *Koodii Referaalaa Keessan:*',
     regDate: '📅 *Guyyaa Galmee:*',
-    mainBalance: '💰 *Herrega Guddaa:*',
-    bonusBalance: '🎁 *Herrega Boonasii:*',
+    mainWallet: '🟢 *Herrega Guddaa (Main Wallet):*',
+    playWallet: '🟡 *Herrega Taphaa (Play Wallet):*',
     errorNotFound: '⚠️ Maaloo dura /start tuquun galmaaʼaa.',
     errorGeneral: '⚠️ Proofaayilii keessan fiduu hin dandaʼamre. Irra deebi\'aa yaalaa.'
   },
@@ -57,8 +57,8 @@ const PROFILE_TEXTS = {
     noPhone: 'Lama diiwaangelin',
     referral: '🔗 *Koodkaaga Tixraaca:*',
     regDate: '📅 *Taariikhda Diiwaangelinta:*',
-    mainBalance: '💰 *Hadhaaga Weyn:*',
-    bonusBalance: '🎁 *Hadhaaga Boonooska:*',
+    mainWallet: '🟢 *Boorso Weyn (Main Wallet):*',
+    playWallet: '🟡 *Boorso Ciyaar (Play Wallet):*',
     errorNotFound: '⚠️ Fadlan marka hore iska diiwaangeli adoo riixaya /start.',
     errorGeneral: '⚠️ Waan soo celin kari waayay profile-kaaga. Fadlan dib u tijaabi.'
   }
@@ -87,8 +87,8 @@ ${t.phone} ${escapeMarkdown(user.phoneNumber || t.noPhone)}
 ${t.referral} \`${user.referralCode}\`
 ${t.regDate} ${new Date(user.createdAt).toLocaleDateString()}
 
-${t.mainBalance} ${wallet?.balance || 0}.00 ETB
-${t.bonusBalance} ${wallet?.bonusBalance || 0}.00 ETB`;
+${t.mainWallet} ${wallet?.mainWallet || 0}.00 ETB
+${t.playWallet} ${wallet?.playWallet || 0}.00 ETB`;
 
     await ctx.reply(text, { parse_mode: 'Markdown', ...mainMenuMarkup });
   } catch (err) {

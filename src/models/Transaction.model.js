@@ -15,7 +15,15 @@ const transactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['deposit', 'withdrawal', 'game_buy_in', 'game_win', 'referral_bonus', 'admin_adjustment'],
+      enum: [
+        'deposit', 
+        'withdrawal', 
+        'game_buy_in', 
+        'game_win', 
+        'bonus',            // 🟢 የምዝገባ ቦነስ የሚመዘገብበት 
+        'referral_bonus', 
+        'admin_adjustment'
+      ],
       required: true,
     },
     amount: {

@@ -1,15 +1,18 @@
 import crypto from 'crypto';
 import { User } from '../models/User.model.js';
 import { Wallet } from '../models/Wallet.model.js';
+import { Transaction } from '../models/Transaction.model.js';
 import { generateToken } from '../utils/generateToken.js';
 
 export const authenticateOrRegisterUser = async (telegramUser, referralCodeInput = null) => {
   const telegramId = String(telegramUser.id);
 
   let user = await User.findOne({ telegramId });
+  let isNewUser = false;
 
   if (!user) {
-    // Generate unique referral code for the new user
+    isNewUser = true;
+    // 1. ልዩ የሪፈራል ኮድ ማመንጨት
     const referralCode = crypto.randomBytes(4).toString('hex').toUpperCase();
 
     let referredBy = null;
@@ -20,7 +23,7 @@ export const authenticateOrRegisterUser = async (telegramUser, referralCodeInput
       }
     }
 
-    // Create User
+    // 2. ተጠቃሚውን መፍጠር
     user = await User.create({
       telegramId,
       firstName: telegramUser.first_name || 'Player',
@@ -31,16 +34,28 @@ export const authenticateOrRegisterUser = async (telegramUser, referralCodeInput
       referredBy,
     });
 
-    // Create associated Wallet
-    await Wallet.create({
+    // 3. ⚡ የዋሌት መዝገብ መፍጠር እና የ 100 ETB የምዝገባ ቦነስ ወደ playWallet ማስገባት
+    const registrationBonus = 100;
+    const wallet = await Wallet.create({
       user: user._id,
-      balance: 0,
+      mainWallet: 0,                // ማውጣት የሚቻለው ጨዋታ አሸንፎ ሲገኝ ብቻ ነው
+      playWallet: registrationBonus, // 🎁 የምዝገባ ቦነስ ወደ Play Wallet ይገባል (ማውጣት አይቻልም)
       lockedBalance: 0,
-      bonusBalance: 0,
       currency: 'ETB',
     });
+
+    // 4. የቦነሱን ትራንዛክሽን መመዝገብ
+    await Transaction.create({
+      user: user._id,
+      wallet: wallet._id,
+      type: 'bonus',
+      amount: registrationBonus,
+      status: 'completed',
+      description: 'Welcome registration bonus credited to Play Wallet',
+    });
+
   } else {
-    // Update last login details
+    // ተጠቃሚው ቀድሞ ካለ የመጨረሻ የመግቢያ ሰዓቱን እና መረጃዎቹን ማዘመን
     user.lastLoginAt = new Date();
     user.firstName = telegramUser.first_name || user.firstName;
     user.lastName = telegramUser.last_name || user.lastName;
@@ -48,8 +63,8 @@ export const authenticateOrRegisterUser = async (telegramUser, referralCodeInput
     await user.save();
   }
 
-  // Generate JWT session token
+  // 5. የ JWT ቶከን ማመንጨት
   const token = generateToken(user);
 
-  return { user, token };
+  return { user, token, isNewUser };
 };

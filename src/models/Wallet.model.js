@@ -9,23 +9,23 @@ const walletSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
-    balance: {
+    mainWallet: {
       type: Number,
       required: true,
       default: 0,
-      min: 0,
+      min: 0, // 🟢 ጨዋታ አሸንፎ የሚገባበት እና ማውጣት (Withdraw) የሚቻልበት
+    },
+    playWallet: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0, // 🟡 ዲፖዚት፣ የምዝገባ ቦነስ እና ሪፈራል ቦነስ የሚከማቹበት (ለጨዋታ ብቻ)
     },
     lockedBalance: {
       type: Number,
       required: true,
       default: 0,
-      min: 0,
-    },
-    bonusBalance: {
-      type: Number,
-      required: true,
-      default: 0,
-      min: 0,
+      min: 0, // 🔒 በሂደት ላይ ያሉ ዊዝድሮዋሎች የሚታገዱበት
     },
     currency: {
       type: String,
