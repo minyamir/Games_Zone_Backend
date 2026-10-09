@@ -1,5 +1,4 @@
 import { userService } from '../../services/user.service.js';
-import { walletService } from '../../services/wallet.service.js';
 import { handleProfileCommand } from './profile.handler.js';
 import { handleWalletCommand } from './wallet.handler.js';
 import { handleReferralCommand } from './referral.handler.js';

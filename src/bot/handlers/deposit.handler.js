@@ -1,10 +1,11 @@
 import { User } from '../../models/User.model.js';
 import { getBackKeyboard, getMainMenuKeyboard } from '../keyboards.js';
+import { handleDepositSubmission } from '../../controllers/deposit.controller.js';
 
-// Helper function to fetch user language
+// Helper function to fetch user language with performance optimization (.lean())
 const getUserLanguage = async (telegramId) => {
   try {
-    const user = await User.findOne({ telegramId });
+    const user = await User.findOne({ telegramId }).lean();
     return user?.language || 'am';
   } catch {
     return 'am';
@@ -69,13 +70,31 @@ export const handleDepositMessage = async (ctx, telegramId, state, userStates) =
   const backKeyboardMarkup = getBackKeyboard(lang);
 
   if (state.step === 'WAITING_AMOUNT') {
-    userStates.set(telegramId, { type: 'deposit', step: 'WAITING_SMS', bank: state.bank, amount: ctx.message.text, language: lang });
+    const amount = Number(ctx.message.text);
+    if (isNaN(amount) || amount <= 0) {
+      const errorTexts = {
+        am: '⚠️ እባክዎ ትክክለኛ የብር መጠን ያስገቡ:',
+        en: '⚠️ Please enter a valid amount:',
+        om: '⚠️ Maaloo hanga maallaqaa sirrii galchaa:',
+        so: '⚠️ Fadlan geli cadad lacag sax ah:'
+      };
+      await ctx.reply(errorTexts[lang] || errorTexts['am']);
+      return true;
+    }
+
+    userStates.set(telegramId, { 
+      type: 'deposit', 
+      step: 'WAITING_SMS', 
+      bank: state.bank, 
+      amount: amount, 
+      language: lang 
+    });
     
     const promptTexts = {
-      am: `መጠን: ${ctx.message.text} ETB\n\nእባክዎ የባንክ SMS ማረጋገጫ (Tx Ref) ይላኩ:`,
-      en: `Amount: ${ctx.message.text} ETB\n\nPlease send the Bank SMS confirmation (Tx Ref):`,
-      om: `Hanga: ${ctx.message.text} ETB\n\nMaaloo mirkaneessa SMS baankii (Tx Ref) ergai:`,
-      so: `Cadadka: ${ctx.message.text} ETB\n\nFadlan soo dir xaqiijinta SMS-ka bangiga (Tx Ref):`
+      am: `መጠን: ${amount} ETB\n\nእባክዎ የባንክ SMS ማረጋገጫ (Tx Ref) ይላኩ:`,
+      en: `Amount: ${amount} ETB\n\nPlease send the Bank SMS confirmation (Tx Ref):`,
+      om: `Hanga: ${amount} ETB\n\nMaaloo mirkaneessa SMS baankii (Tx Ref) ergai:`,
+      so: `Cadadka: ${amount} ETB\n\nFadlan soo dir xaqiijinta SMS-ka bangiga (Tx Ref):`
     };
 
     await ctx.reply(promptTexts[lang] || promptTexts['am'], {
@@ -84,18 +103,37 @@ export const handleDepositMessage = async (ctx, telegramId, state, userStates) =
     return true;
     
   } else if (state.step === 'WAITING_SMS') {
-    userStates.delete(telegramId);
-    
-    const mainMenuMarkup = getMainMenuKeyboard(lang);
-    const successTexts = {
-      am: `✅ የክፍያ ጥያቄዎ ተመዝግቧል! አስተዳዳሪው ያረጋግጥለታል።`,
-      en: `✅ Your deposit request has been submitted! An admin will verify it.`,
-      om: `✅ Gaaffiin kaffaltii keessan galmeeffameera! Bulchaan ni mirkaneessa.`,
-      so: `✅ Codsigaaga dhigashada waa la gudbiyay! Maamuluhu wuu xaqiijin doonaa.`
-    };
+    const txRef = ctx.message.text;
 
-    await ctx.reply(successTexts[lang] || successTexts['am'], mainMenuMarkup);
-    return true;
+    try {
+      // ⚡ 1. Controller በመጥራት ዳታቤዝ ላይ የዲፖዚት ትራንዛክሽን መመዝገብ
+      await handleDepositSubmission(telegramId, state.amount, state.bank, { txRef });
+
+      userStates.delete(telegramId);
+      
+      const mainMenuMarkup = getMainMenuKeyboard(lang);
+      const successTexts = {
+        am: `✅ የክፍያ ጥያቄዎ ተመዝግቧል! አስተዳዳሪው ያረጋግጥለታል።`,
+        en: `✅ Your deposit request has been submitted! An admin will verify it.`,
+        om: `✅ Gaaffiin kaffaltii keessan galmeeffameera! Bulchaan ni mirkaneessa.`,
+        so: `✅ Codsigaaga dhigashada waa la gudbiyay! Maamuluhu wuu xaqiijin doonaa.`
+      };
+
+      await ctx.reply(successTexts[lang] || successTexts['am'], mainMenuMarkup);
+      return true;
+    } catch (err) {
+      userStates.delete(telegramId);
+      const mainMenuMarkup = getMainMenuKeyboard(lang);
+      
+      const errTexts = {
+        am: '⚠️ ስህተት አጋጥሟል። እባክዎ እንደገና ይሞክሩ።',
+        en: '⚠️ An error occurred. Please try again later.',
+        om: '⚠️ Dogoggorri uumameera. Maaloo irra deebofaa yaalaa.',
+        so: '⚠️ Khalad ayaa dhacay. Fadlan markale dib u day.'
+      };
+      await ctx.reply(errTexts[lang] || errTexts['am'], mainMenuMarkup);
+      return true;
+    }
   }
   
   return false;
