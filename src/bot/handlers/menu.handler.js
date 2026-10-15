@@ -6,6 +6,7 @@ import { handleHelpCommand } from './help.handler.js';
 import { handleRulesCommand } from './rules.handler.js';
 import { handleLanguageCommand } from './language.handler.js';
 import { handlePromotionCommand } from './promotion.handler.js';
+import { handleGuide } from './guide.helper.js';
 import { playWebAppKeyboard, getMainMenuKeyboard } from '../keyboards.js';
 import { config } from '../../config/env.js';
 
@@ -23,7 +24,7 @@ export const handleMenuMessage = async (ctx, text, telegramId) => {
 
     // 1. 🎮 ጌም ጨወቱ (Play Game / Taphocha Taphadhuu / Ciyaar)
     if (cleanText.includes('ጌም') || cleanText.includes('Play') || cleanText.includes('Taphocha') || cleanText.includes('Ciyaar') || cleanText === '/play') {
-      const miniAppUrl = config.miniAppUrl || 'https://your-mini-app-domain.com';
+      const miniAppUrl = config.miniAppUrl || 'https://chain-ginger-42071788.figma.site/';
       
       const gameTexts = {
         am: '🎮 **ወደ ቢንጎ ሀበሻ ጨዋታ እንኳን ደህና መጡ!**\n\nጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ፡',
@@ -131,14 +132,7 @@ export const handleMenuMessage = async (ctx, text, telegramId) => {
 
     // 10. 📖 መመሪያ (Guide / Qajeelfama / Hagaha)
     if (cleanText.includes('መመሪያ') || cleanText.includes('Guide') || cleanText.includes('Qajeelfama') || cleanText.includes('Hagaha') || cleanText === '/guide') {
-      const guideTexts = {
-        am: '📖 **የጨዋታ መመሪያ**\n\n1. ሚኒ አፑን ይክፈቱ\n2. የቢንጎ ካርድ ይምረጡ\n3. ቁጥሮች ሲጠሩ ይጫወቱ እና ያሸንፉ!',
-        en: '📖 **Game Guide**\n\n1. Open the Mini App\n2. Select your Bingo card\n3. Play and win as numbers are called!',
-        om: '📖 **Qajeelfama Taphaa**\n\n1. Mini App banaa\n2. Kaardii BiiNGO filadhaa\n3. Lakkoofsi yeroo waamamu taphadhaa injifadhaa!',
-        so: '📖 **Hagaha Ciyaarta**\n\n1. Fur Mini App-ka\n2. Dooro kaarkaaga Bingo\n3. Ciyaar oo guulayso marka lambarada la yeero!'
-      };
-
-      await ctx.reply(guideTexts[lang] || guideTexts['am'], { parse_mode: 'Markdown', ...mainMenuMarkup });
+      await handleGuide(ctx, lang);
       return;
     }
 

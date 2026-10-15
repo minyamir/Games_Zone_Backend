@@ -4,9 +4,9 @@ const userSchema = new mongoose.Schema(
   {
     telegramId: {
       type: String,
-      required: true,
       unique: true,
-      index: true,
+      sparse: true, // ⚡ አድሚኖች ቴሌግራም ላይኖራቸው ስለሚችል ዩኒክነቱን ጠብቆ እንዲያልፍ ይረዳል
+      default: null,
     },
     phoneNumber: {
       type: String,
@@ -29,15 +29,21 @@ const userSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    // ⚡ የአድሚን መግቢያ ሚስጥር ቃል (Password) እንዲቀመጥ ይህንን ጨምረናል
+    password: {
+      type: String,
+      required: false,
+      default: '',
+    },
     photoUrl: {
       type: String,
       default: '',
     },
     referralCode: {
       type: String,
-      required: true,
       unique: true,
-      index: true,
+      sparse: true, // ⚡ አድሚኖች ሪፈራል ኮድ ላይፈልጉ ስለሚችሉ አማራጭ እናደርገዋለን
+      default: null,
     },
     referredBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -54,7 +60,6 @@ const userSchema = new mongoose.Schema(
       enum: ['active', 'suspended', 'banned'],
       default: 'active',
     },
-    // ቋንቋዎችን ለማስቀመጥ ይህንን እዚህ እንጨምራለን (Default: amharic 'am')
     language: {
       type: String,
       enum: ['am', 'en', 'om', 'so'],

@@ -3,8 +3,12 @@ import { app } from './app.js';
 import { config } from './config/env.js';
 import { connectDB } from './config/database.js';
 import { initTelegramBot } from './bot/bot.js';
+import { initSocket } from './sockets/socket.js'; // 👈 ሶኬቱን ከ sockets/socket.js እናመጣለን
 
 const server = http.createServer(app);
+
+// ⚡ Socket.io ን ማስጀመር
+initSocket(server);
 
 const startServer = async () => {
   try {

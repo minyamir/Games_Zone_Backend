@@ -147,3 +147,5 @@ export const initTelegramBot = () => {
 };
 
 export const getUserStates = () => userStates;
+
+export const getBotInstance = () => botInstance;

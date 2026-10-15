@@ -9,5 +9,6 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || 'super_secret_jwt_key',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
+  telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME || 'Game_Ethiopia_bot', // 👈 ይህንን እዚህ ላይ መጨመር ይኖርብዎታል
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
 };
