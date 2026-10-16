@@ -27,6 +27,10 @@ const withdrawalSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    phoneNumber: {
+         type: String,
+         required: true
+          },
     accountNumber: {
       type: String,
       required: true,

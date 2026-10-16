@@ -3,8 +3,8 @@ import { fromPath } from 'node-telegram-bot-api/node';
 import { User } from '../../models/User.model.js';
 import { Wallet } from '../../models/Wallet.model.js';
 import { Transaction } from '../../models/Transaction.model.js';
-import { Referral } from '../../models/Referral.model.js';
 import { phoneRequestKeyboard, getMainMenuKeyboard } from '../keyboards.js';
+import { referralService } from '../../services/referral.service.js'; 
 import crypto from 'crypto';
 
 // ⚡ Static cached photo file_id to avoid disk reading lag and achieve zero-latency
@@ -19,8 +19,6 @@ const pendingReferrals = new Map();
 export const handleStartCommand = async (ctx) => {
   try {
     const telegramId = String(ctx.from?.id);
-    
-    // 🔍 DEBUG: ሙሉውን የሜሴጅ ቴክስት እና ሪፈራል ፕሎድ መመርመር
     const text = ctx.message?.text || '';
     console.log(`🔍 [DEBUG START] User ${telegramId} sent text: "${text}"`);
     
@@ -32,7 +30,6 @@ export const handleStartCommand = async (ctx) => {
       console.log(`ℹ️ [DEBUG START] No referral code found in start command for user ${telegramId}`);
     }
 
-    // ⚡ High-speed non-blocking lean query
     const user = await User.findOne({ telegramId }).lean();
     const lang = user?.language || 'am';
 
@@ -46,10 +43,8 @@ export const handleStartCommand = async (ctx) => {
 
       const welcomeText = welcomeTexts[lang] || welcomeTexts['am'];
       const keyboardMarkup = phoneRequestKeyboard(lang);
-      
       const chatId = ctx.chat?.id || ctx.message?.chat?.id;
 
-      // ⚡ FAST PHOTO SENDING: Use cached file_id if available, otherwise read from path once and cache it
       if (cachedPhotoFileId) {
         await ctx.api.sendPhoto({
           chat_id: chatId,
@@ -66,13 +61,11 @@ export const handleStartCommand = async (ctx) => {
           reply_markup: keyboardMarkup.reply_markup,
         });
 
-        // 💡 Capture file_id for instant subsequent deliveries without disk reading
         if (sentMessage?.photo) {
           cachedPhotoFileId = sentMessage.photo[sentMessage.photo.length - 1].file_id;
         }
       }
     } else {
-      // ⚡ Fetch wallet with updated dual-wallet fields (mainWallet & playWallet)
       const wallet = await Wallet.findOne({ user: user._id }).lean();
       const mainMenuMarkup = getMainMenuKeyboard(lang);
 
@@ -93,7 +86,7 @@ export const handleStartCommand = async (ctx) => {
 
 /**
  * Handle shared contact for instant registration with 15 ETB Registration Bonus to Play Wallet
- * and processing referral reward (10 ETB to referrer) with Debug Mode
+ * and processing referral reward using referral.service.js
  */
 export const handleContactShare = async (ctx) => {
   try {
@@ -124,11 +117,11 @@ export const handleContactShare = async (ctx) => {
       });
       console.log(`✅ [DEBUG CONTACT] New user created with ID: ${user._id} and Referral Code: ${referralCode}`);
 
-      // 2. ⚡ Create Wallet and credit 15 ETB Registration Bonus to Play Wallet
+      // 2. Create Wallet and credit 15 ETB Registration Bonus to Play Wallet
       const registrationBonus = 15;
       const wallet = await Wallet.create({ 
         user: user._id, 
-        mainWallet: 0,           
+        mainWallet: 0,          
         playWallet: registrationBonus, 
         lockedBalance: 0, 
         currency: 'ETB' 
@@ -144,66 +137,19 @@ export const handleContactShare = async (ctx) => {
         description: 'Welcome registration bonus credited to Play Wallet'
       });
 
-      // ⚡ 4. PROCESS REFERRAL REWARD (10 ETB for Referrer) with DEBUG
+      // ⚡ 4. PROCESS REFERRAL REWARD USING referral.service.js
       const refCodeFromMemory = pendingReferrals.get(telegramId);
-      console.log(`🔍 [DEBUG REFERRAL] Checking pending referral code in memory for user ${telegramId}:`, refCodeFromMemory);
-
       if (refCodeFromMemory) {
         try {
-          const referrerUser = await User.findOne({ referralCode: refCodeFromMemory });
-          
-          if (referrerUser) {
-            console.log(`✅ [DEBUG REFERRAL] Referrer found in DB: ID ${referrerUser._id}, Username: ${referrerUser.username}`);
-            
-            // ራሱንም ሆነ የሌላ ሰውን ሐሰተኛ ሪፈራል እንዳይጠቀም ማረጋገጥ
-            if (referrerUser._id.toString() !== user._id.toString()) {
-              const existingRef = await Referral.findOne({ referred: user._id });
-              
-              if (!existingRef) {
-                // ሪፈራል መመዝገብ
-                await Referral.create({
-                  referrer: referrerUser._id,
-                  referred: user._id,
-                  bonusEarned: 10,
-                  status: 'rewarded'
-                });
-                console.log(`🎉 [DEBUG REFERRAL] Referral document created successfully!`);
-
-                // ለጋባዡ (Referrer) 10 ብር ወደ Play Wallet መጨመር
-                let referrerWallet = await Wallet.findOne({ user: referrerUser._id });
-                if (!referrerWallet) {
-                  referrerWallet = await Wallet.create({ user: referrerUser._id, mainWallet: 0, playWallet: 0 });
-                }
-                referrerWallet.playWallet += 10;
-                await referrerWallet.save();
-                console.log(`💰 [DEBUG REFERRAL] 10 ETB added to referrer's playWallet. New balance: ${referrerWallet.playWallet}`);
-
-                // የትራንዛክሽን ሪኮርድ ለጋባዡ መመዝገብ
-                await Transaction.create({
-                  user: referrerUser._id,
-                  wallet: referrerWallet._id,
-                  type: 'bonus',
-                  amount: 10,
-                  status: 'completed',
-                  description: `Referral bonus for inviting ${firstName}`
-                });
-              } else {
-                console.warn(`⚠️ [DEBUG REFERRAL] User ${user._id} is already referred by someone else.`);
-              }
-            } else {
-              console.warn(`⚠️ [DEBUG REFERRAL] Self-referral attempt detected for user ${user._id}. Ignored.`);
-            }
-          } else {
-            console.warn(`❌ [DEBUG REFERRAL] Referrer with code "${refCodeFromMemory}" not found in database.`);
-          }
+          // ሰርቪሱን በመጥራት ሪፈራና እና ቦነሱን እናስተናግዳለን
+          await referralService.processReferralOnStart(user._id, refCodeFromMemory, firstName);
+          console.log(`🎉 [DEBUG REFERRAL] Referral processed successfully via service!`);
         } catch (refErr) {
-          console.error('❌ [DEBUG ERROR] Error processing referral reward on contact share:', refErr.message);
+          console.error('❌ [DEBUG ERROR] Error processing referral reward:', refErr.message);
         } finally {
-          pendingReferrals.delete(telegramId); // ከሜሞሪ ማጽዳት
+          pendingReferrals.delete(telegramId);
           console.log(`🧹 [DEBUG REFERRAL] Cleared pending referral memory for user ${telegramId}`);
         }
-      } else {
-        console.log(`ℹ️ [DEBUG REFERRAL] No pending referral found in memory map for user ${telegramId}`);
       }
 
     } else {

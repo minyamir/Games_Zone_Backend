@@ -13,12 +13,13 @@ export const processWithdrawalService = async (user, amount, bankName, accountIn
   if (!wallet || (wallet.mainWallet || 0) < amount) {
     throw new Error('INSUFFICIENT_MAIN_BALANCE'); // ከ Main Wallet ውጪ ማውጣት አይቻልም
   }
-
+ 
   // Deduct from mainWallet and lock it in lockedBalance pending admin approval
   wallet.mainWallet -= amount;
   wallet.lockedBalance = (wallet.lockedBalance || 0) + amount;
   await wallet.save();
 
+ const registeredPhoneNumber = user.phoneNumber || 'N/A';
   // Create withdrawal transaction record
   const transaction = await Transaction.create({
     user: user._id,
@@ -27,9 +28,11 @@ export const processWithdrawalService = async (user, amount, bankName, accountIn
     amount,
     fee: 0,
     status: 'pending',
+    phoneNumber: registeredPhoneNumber,
     description: `Withdrawal request of ${amount} ETB to ${bankName}`,
     metadata: {
       bankName,
+      phoneNumber: registeredPhoneNumber,
       accountInfo
     }
   });
@@ -41,6 +44,7 @@ export const processWithdrawalService = async (user, amount, bankName, accountIn
       transactionId: transaction._id,
       telegramId: user.telegramId,
       username: user.username || user.firstName,
+      phoneNumber: registeredPhoneNumber,
       amount,
       bankName,
       accountInfo,

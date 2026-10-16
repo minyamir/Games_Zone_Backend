@@ -1,29 +1,24 @@
-import { Referral } from '../models/Referral.model.js';
-import { User } from '../models/User.model.js';
+import { referralService } from '../services/referral.service.js'; // 👈 ሰርቪሱን ማስገባት
 
 /**
- * የተጠቃሚውን የሪፈራል መረጃ ማምጣት (برای Web Dashboard / API)
+ * የተጠቃሚውን የሪፈራል መረጃ ማምጣት (ለሚኒ አፕ / ዌብ ዳሽቦርድ)
  */
-export const getUserReferrals = async (req, res) => {
+export const getUserReferrals = async (req, res, next) => {
   try {
-    const userId = req.user._id; // ከ Auth Middleware የሚመጣ
+    const userId = req.user._id; // ከ Auth Middleware የሚመጣ የተጠቃሚ መታወቂያ
 
-    const referrals = await Referral.find({ inviter: userId })
-      .populate('referred', 'firstName username createdAt')
-      .sort({ createdAt: -1 });
-
-    const totalEarned = referrals.length * 10;
+    // 👈 የዳታቤዝ ጥያቄዎችን የያዘውን ሰርቪስ እንጠራዋለን
+    const result = await referralService.getUserReferrals(userId);
 
     return res.status(200).json({
       success: true,
-      data: {
-        totalInvited: referrals.length,
-        totalEarned,
-        referrals
-      }
+      data: result
     });
   } catch (err) {
     console.error('❌ Get User Referrals Error:', err);
-    return res.status(500).json({ success: false, message: 'Server error while fetching referrals' });
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Server error while fetching referrals' 
+    });
   }
 };
