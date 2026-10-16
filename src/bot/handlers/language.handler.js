@@ -6,10 +6,16 @@ export const handleLanguageCommand = async (ctx) => {
     const keyboard = {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '🇪🇹 አማርኛ (Amharic)', callback_data: 'lang_am' }],
-          [{ text: '🇬🇧 English', callback_data: 'lang_en' }],
-          [{ text: '🟡 Afaan Oromoo', callback_data: 'lang_om' }],
-          [{ text: '🟢 Soomaaliga', callback_data: 'lang_so' }]
+          // 🟢 1ኛ ረድፍ (Row 1): አማርኛ እና English ጎን ለጎን
+          [
+            { text: '🇪🇹 አማርኛ (Amharic)', callback_data: 'lang_am' },
+            { text: '🇬🇧 English', callback_data: 'lang_en' }
+          ],
+          // 🟢 2ኛ ረድፍ (Row 2): Afaan Oromoo እና Soomaaliga ጎን ለጎን
+          [
+            { text: '🟡 Afaan Oromoo', callback_data: 'lang_om' },
+            { text: '🟢 Soomaaliga', callback_data: 'lang_so' }
+          ]
         ]
       }
     };
