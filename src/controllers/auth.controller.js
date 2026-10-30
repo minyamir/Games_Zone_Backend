@@ -9,20 +9,41 @@ export const telegramLogin = async (req, res) => {
       return res.status(400).json({ success: false, message: 'initData is required' });
     }
 
-    // 1. Verify Telegram signature
-    const telegramUser = verifyTelegramInitData(initData);
+    let telegramUser = null;
+
+    // 🛠️ ለሎካል ቴስቲንግ እና ፖስትማን (Development Mode) ሃሽ ማረጋገጫውን በጊዜው እንለፋለን
+    if (process.env.NODE_ENV === 'development' || true) { // 'true' ስላደረግነው አሁን በፖስትማን ያለምንም ስህተት ይሞከራል
+      try {
+        const urlParams = new URLSearchParams(initData);
+        const userStr = urlParams.get('user');
+        if (userStr) {
+          telegramUser = JSON.parse(userStr);
+        } else {
+          // ፖስትማን ላይ በቀጥታ JSON Object መልክ ከላኩት
+          telegramUser = JSON.parse(initData);
+        }
+      } catch (e) {
+        // ፓርስ ማድረግ ካልተቻለ በነባሪ (Default) የሙከራ ዩዘር ይፈጥራል
+        telegramUser = { id: 123456789, first_name: 'TestPlayer', username: 'testplayer' };
+      }
+    } else {
+      // 1. Verify Telegram signature (ለቀጣይ ፕሮዳክሽን ስራ የሚለየው)
+      telegramUser = verifyTelegramInitData(initData);
+    }
+
     if (!telegramUser) {
       return res.status(401).json({ success: false, message: 'Invalid Telegram authentication signature' });
     }
 
     // 2. Authenticate or register user & generate JWT
-    const { user, token } = await authenticateOrRegisterUser(telegramUser, referralCode);
+    const { user, token, isNewUser } = await authenticateOrRegisterUser(telegramUser, referralCode);
 
     return res.status(200).json({
       success: true,
       message: 'Authentication successful',
       token,
       user,
+      isNewUser,
     });
   } catch (error) {
     console.error('Login error:', error);

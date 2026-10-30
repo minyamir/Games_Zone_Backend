@@ -1,13 +1,20 @@
 import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken';
 import { config } from '../config/env.js';
+import { BINGO_CONSTANTS } from '../game/game.constants.js';
+import { socketAuthMiddleware } from '../middleware/socketAuth.middleware.js'; // ⚡ አዲሱን ሚድልዌር ማስገባት
 import { registerAdminSocketHandlers } from './admin.socket.js';
 import { registerDepositSocketHandlers } from './deposit.socket.js';
 import { registerWithdrawalSocketHandlers } from './withdrawal.socket.js';
+import { registerGameSockets } from './game.socket.js';
+import { registerTicketSockets } from './ticket.socket.js';
 
 let io;
 
 export const initSocket = (server) => {
+  if (BINGO_CONSTANTS.DEBUG_MODE) {
+    console.log(`[DEBUG]: Initializing Socket.io server instance`);
+  }
+
   io = new Server(server, {
     cors: { 
       origin: config.clientUrl || '*',
@@ -15,28 +22,21 @@ export const initSocket = (server) => {
     }
   });
 
-  // ⚡ JWT Authentication Middleware for Socket Connection
-  io.use((socket, next) => {
-    const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1];
-    
-    try {
-      if (token) {
-        const decoded = jwt.verify(token, config.jwtSecret || 'bingo_super_secret_key');
-        socket.user = decoded; // የአድሚኑን/ተጠቃሚውን መረጃ እንይዘዋለን
-      }
-      next();
-    } catch (err) {
-      // ቶከኑ ልክ ካልሆነ ግንኙነቱን ላለማቋረጥ ማለፍ ይቻላል ወይም next(new Error('Authentication error')) ማለት ይቻላል
-      next();
-    }
-  });
+  // ⚡ ቴሌግራም initData እና ዩዘር ቼክ የሚያደርገውን ሚድልዌር እዚህ መጠቀም
+  io.use(socketAuthMiddleware);
 
   io.on('connection', (socket) => {
-    console.log(`⚡ Client connected: ${socket.id}`);
+    if (BINGO_CONSTANTS.DEBUG_MODE) {
+      console.log(`[DEBUG]: New client connected with socket ID: ${socket.id}, User ID: ${socket.userId || 'Guest'}`);
+    }
+    console.log(`⚡ Client connected: ${socket.id} (${socket.userId ? 'Authenticated Player' : 'Guest'})`);
 
-    // ⚡ አድሚኑ ወደ admin-dashboard ሩም ለመቀላቀል ሲጠይቅ
+    // Handle admin dashboard room joining request
     socket.on('join-admin-room', (data) => {
       socket.join('admin-dashboard');
+      if (BINGO_CONSTANTS.DEBUG_MODE) {
+        console.log(`[DEBUG]: Socket ${socket.id} joined room 'admin-dashboard'`);
+      }
       console.log(`✅ Client ${socket.id} successfully joined admin-dashboard room`);
     });
 
@@ -56,7 +56,26 @@ export const initSocket = (server) => {
       registerWithdrawalSocketHandlers(io, socket);
     }
 
+    // 4. Register Bingo Game Socket Handlers
+    if (typeof registerGameSockets === 'function') {
+      registerGameSockets(io, socket);
+      if (BINGO_CONSTANTS.DEBUG_MODE) {
+        console.log(`[DEBUG]: Game socket handlers registered for client ${socket.id}`);
+      }
+    }
+
+    // 5. Register Bingo Ticket Socket Handlers
+    if (typeof registerTicketSockets === 'function') {
+      registerTicketSockets(io, socket);
+      if (BINGO_CONSTANTS.DEBUG_MODE) {
+        console.log(`[DEBUG]: Ticket socket handlers registered for client ${socket.id}`);
+      }
+    }
+
     socket.on('disconnect', () => {
+      if (BINGO_CONSTANTS.DEBUG_MODE) {
+        console.log(`[DEBUG]: Client disconnected: ${socket.id}`);
+      }
       console.log(`❌ Client disconnected: ${socket.id}`);
     });
   });

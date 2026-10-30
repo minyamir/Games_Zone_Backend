@@ -42,7 +42,7 @@ const bingoGameSchema = new mongoose.Schema(
     },
     winningPattern: {
       type: String,
-      default: 'full_house', // e.g., 'full_house', 'line', 'four_corners'
+      default: 'full_house',
     },
     startTime: {
       type: Date,
@@ -55,6 +55,15 @@ const bingoGameSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform: (doc, ret) => {
+        ret.gameSession_id = ret._id;
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      }
+    }
   }
 );
 
