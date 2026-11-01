@@ -76,7 +76,7 @@ export const registerGameSockets = (io, socket) => {
     }
   });
 
-  // Handle playerssssssssssssssssssssssssssssssssssssssssssssssss leaving the game room
+  // Handle playersssssssssssssssssssssssssssssssssssssssssssssss leaving the game room
   socket.on('leave_game_room', ({ gameId }) => {
     const roomName = `game_${gameId}`;
     socket.leave(roomName);
